@@ -12,7 +12,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
+        MainWindow.setObjectName("Detection Auto Labeling with Detectron!")
         MainWindow.resize(1080, 960)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -70,7 +70,7 @@ class Ui_MainWindow(object):
         self.out_botton = QtWidgets.QDialogButtonBox(self.centralwidget)
         self.out_botton.setGeometry(QtCore.QRect(660, 870, 400, 50))
         self.out_botton.setOrientation(QtCore.Qt.Horizontal)
-        self.out_botton.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.out_botton.setStandardButtons(QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel)
         self.out_botton.setObjectName("out_botton")
         self.button_pause = QtWidgets.QPushButton(self.centralwidget)
         self.button_pause.setGeometry(QtCore.QRect(500, 830, 80, 80))
@@ -170,7 +170,7 @@ class Ui_MainWindow(object):
 "Label"))
         self.tag_label_change.setText(_translate("MainWindow", "Now Label"))
         self.button_front_30.setText(_translate("MainWindow", "30s"))
-        self.button_pause.setText(_translate("MainWindow", "Pause"))
+        self.button_pause.setText(_translate("MainWindow", "Start"))
         self.Group_File_Setting.setTitle(_translate("MainWindow", "Video Setting"))
         self.button_video_path.setText(_translate("MainWindow", "open\n"
 "video"))
