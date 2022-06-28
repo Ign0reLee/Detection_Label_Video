@@ -4,9 +4,15 @@ import sys
 import numpy as np
 
 from PyQt5 import uic
+<<<<<<< HEAD
 from PyQt5.QtGui import QPainter, QImage, QPixmap
 from PyQt5.QtCore import QBasicTimer,  pyqtSlot, Qt, QPoint, QRect, QRectF 
 from PyQt5.QtWidgets import  QFileDialog, QLabel,  QMainWindow, QMessageBox, QVBoxLayout, qApp
+=======
+from PyQt5.QtGui import QPainter, QImage
+from PyQt5.QtCore import QBasicTimer,  pyqtSlot
+from PyQt5.QtWidgets import  QFileDialog,  QMainWindow, QMessageBox, qApp
+>>>>>>> 11891b11762af252c6849e652a11f32ee118a2d2
 
 from ui.Main_ui import *
 from .draw_api import *
@@ -16,6 +22,7 @@ class Detection_Label_Main_Window(QMainWindow):
     def __init__(self):
         super().__init__()
         # Set Value
+<<<<<<< HEAD
         self.step         = 0
         self.startPoint   = QPoint()
         self.lastPoint    = QPoint()
@@ -28,10 +35,17 @@ class Detection_Label_Main_Window(QMainWindow):
 
         
 
+=======
+        self.step = 0
+        self.num_frames = 0
+        self.timer = QBasicTimer()
+        self.frame = np.zeros((224,224,3))
+>>>>>>> 11891b11762af252c6849e652a11f32ee118a2d2
 
         # ui connect and ready
         self.main_ui = Ui_MainWindow()
         self.main_ui.setupUi(self)
+        
 
         # Action Setting
         self.setAction()
@@ -64,10 +78,14 @@ class Detection_Label_Main_Window(QMainWindow):
         self.main_ui.button_pause.setShortcut("space")
         
         # Video Viewer
+<<<<<<< HEAD
         # self.qp = QPainter(self.main_ui.frame_main_video).
         self.setMouseTracking(True)
         self.statusbar = self.statusBar()
         
+=======
+        # self.qp = QPainter(self.main_ui.frame_main_video)
+>>>>>>> 11891b11762af252c6849e652a11f32ee118a2d2
     
     @pyqtSlot()
     def on_folderOpen(self):
@@ -135,6 +153,7 @@ class Detection_Label_Main_Window(QMainWindow):
         print(height)
         print(frames_per_second)
         print(self.num_frames)
+<<<<<<< HEAD
         print(self.main_ui.frame_main_video.geometry())
         print(self.main_ui.frame_main_video.frameGeometry().bottomRight().x())
         print(self.main_ui.frame_main_video.frameGeometry().bottomRight().y())
@@ -182,6 +201,10 @@ class Detection_Label_Main_Window(QMainWindow):
             
         self.startPoint = self.endPoint = QPoint()
  
+=======
+    
+   
+>>>>>>> 11891b11762af252c6849e652a11f32ee118a2d2
     
             
     def timerEvent(self, e):
@@ -193,6 +216,7 @@ class Detection_Label_Main_Window(QMainWindow):
             self.timer.stop()
             return
         img = self.toQImage(self.frame)
+<<<<<<< HEAD
         self.paint_widget.draw_img(img)
         self.paint_widget.main_image.update()
         self.main_layout.addWidget(self.paint_widget.main_image)
@@ -202,6 +226,21 @@ class Detection_Label_Main_Window(QMainWindow):
         self.main_ui.seqBar_main_video.setFormat(f"{self.step} / {self.num_frames}")
         self.step = self.step +1
 
+=======
+
+        self.qp.drawImage(self.rect(), img)
+
+        self.main_ui.frame_main_video.update()
+        self.main_ui.seqBar_main_video.setValue(self.step)
+        self.main_ui.seqBar_main_video.setFormat(f"{self.step} / {self.num_frames}")
+        self.step = self.step +1
+    
+
+    def paintEvent(self, event):
+        self.main_ui.frame_main_video.paintEvent(event)
+        self.qp = QPainter(self)
+        # self.qp.end()
+>>>>>>> 11891b11762af252c6849e652a11f32ee118a2d2
 
     def toQImage(self, img, copy=False):
         r"""
