@@ -64,9 +64,10 @@ class Detection_Label_Main_Window(QMainWindow):
         self.main_ui.button_pause.setShortcut("space")
         
         # Video Viewer
-        # self.qp = QPainter(self.main_ui.frame_main_video).
         self.setMouseTracking(True)
         self.statusbar = self.statusBar()
+
+        self.mouseFactor = QPoint(20,50)
         
     
     @pyqtSlot()
@@ -143,12 +144,17 @@ class Detection_Label_Main_Window(QMainWindow):
         super().mousePressEvent(event)
         if event.button() == Qt.LeftButton and self.onFrame:
             self.drawing = True
-            self.startPoint = self.endPoint = event.pos()
+            self.original_point = event.pos()
+            # self.startPoint = self.endPoint = event.pos() - self.paint_widget.main_image.geometry().topLeft()  - self.main_ui.frame_main_video.frameGeometry().topLeft()
+            self.startPoint = self.endPoint = event.pos() - self.mouseFactor
+            print(f"Press Original Point : ({self.original_point})")
+            print(f"Press Correction Point : ({self.startPoint}), ({self.endPoint})")
+            
             
 
     def mouseMoveEvent(self, event) -> None:
         super().mouseMoveEvent(event)
-        self.statusbar.showMessage(f"Mouse Pos = ({event.x()}, {event.y()}), global = ({event.globalX()}, {event.globalY()}), On Frame = {self.onFrame}, Drawing = {self.drawing}")
+        self.statusbar.showMessage(f"Mouse Pos = ({event.x()}, {event.y()}), global = ({event.globalX()}, {event.globalY()}), local = ({event.localPos().x()}, {event.localPos().y()}), On Frame = {self.onFrame}, Drawing = {self.drawing}")
         if event.pos().x() < self.main_ui.frame_main_video.frameGeometry().bottomRight().x() and \
             event.pos().y() <  self.main_ui.frame_main_video.frameGeometry().bottomRight().y():
             self.onFrame = True
@@ -157,8 +163,10 @@ class Detection_Label_Main_Window(QMainWindow):
             self.drawing = False
 
         if self.drawing and event.buttons and Qt.LeftButton:
-            self.endPoint = event.pos()
-            # self.paint_widget.main_image.box_pos = QRect(self.startPoint, self.endPoint)
+            # self.endPoint = event.pos() - self.paint_widget.main_image.geometry().topLeft() - self.main_ui.frame_main_video.frameGeometry().topLeft()
+            self.endPoint =  event.pos() - self.mouseFactor
+            print(f"Moving Original Point : ({self.original_point})")
+            print(f"Moving Point : ({self.startPoint}), ({self.endPoint})")
             self.paint_widget.drawing_rect(self.startPoint, self.endPoint)
             self.update()
             self.paint_widget.main_image.update()
@@ -170,14 +178,18 @@ class Detection_Label_Main_Window(QMainWindow):
         if event.button() == Qt.LeftButton and self.drawing:
             
             self.drawing = False
-            self.endPoint = event.pos()
+            # self.endPoint = event.pos() - self.paint_widget.main_image.geometry().topLeft()  - self.main_ui.frame_main_video.frameGeometry().topLeft()
+            self.endPoint = event.pos() - self.mouseFactor
+
+            print(self.paint_widget.main_image.geometry())
             
-            self.startPoint -= self.main_ui.frame_main_video.frameGeometry().topLeft()
-            self.endPoint   -= self.main_ui.frame_main_video.frameGeometry().topLeft()
-            self.startPoint -= self.main_ui.Group_Main_Video_Viewer.frameGeometry().topLeft()
-            print(self.startPoint)
-            print(self.endPoint)
+            # self.startPoint -= self.paint_widget.main_image.geometry().topLeft()
+            # self.endPoint   -= self.paint_widget.main_image.geometry().topLeft()
+            # self.startPoint -= self.main_ui.Group_Main_Video_Viewer.frameGeometry().topLeft()
+            print(f"Release Original Point : ({self.original_point})")
+            print(f"Release Point : ({self.startPoint}), ({self.endPoint})")
             self.paint_widget.main_image.rectangles.append(QRectF(self.startPoint, self.endPoint))
+            print(f"Main Rectangles : {self.paint_widget.main_image.rectangles}")
             self.paint_widget.main_image.update()
             
         self.startPoint = self.endPoint = QPoint()
