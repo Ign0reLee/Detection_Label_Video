@@ -1,21 +1,57 @@
 
 from PyQt5 import uic
 from PyQt5.QtGui import QColor, QPainter, QImage, QPixmap, QPen
-from PyQt5.QtCore import QBasicTimer, QPoint, QRect, QRectF,  pyqtSlot, Qt
+from PyQt5.QtCore import QBasicTimer, QObject, QPoint, QRect, QRectF,  pyqtSlot, Qt
 from PyQt5.QtWidgets import  QLabel, QWidget
 
 from ui.Main_ui import *
 
+CLASS_NAME = {0: "BackGround",
+              1: "Duck",
+              2: "Slapped",
+              3: "Dead"}
+
+CLASS_COLOR = {0: QColor(0, 0, 0),
+               1: QColor(255, 0, 0),
+               2: QColor(0, 255, 0),
+               3: QColor(0, 0, 255)}
+
 class myQLabel(QLabel):
     def __init__(self, parent=None):
         super(myQLabel, self).__init__(parent)
-        self.rectangles = [QRectF(QPoint(250.0, 250.0), QPoint(300.0, 300.0))]
+        self.rectangles = []
+        self.labels     = []
+        self.onBox      = False
+        self.index      = None
+
     def paintEvent(self, QPaintEvent):
         super(myQLabel, self).paintEvent(QPaintEvent)
         painter = QPainter(self)
-        painter.setPen(QPen(QColor(255,0,0, 255), 3, Qt.SolidLine))
-        if self.rectangles:
-            painter.drawRects(self.rectangles)
+        # Draw Rectangles
+        for label, rect in  zip(self.labels ,self.rectangles):
+            painter.setPen(QPen(CLASS_COLOR[label], 3, Qt.SolidLine))
+            painter.drawRect(rect)
+        
+        print(self.onBox)
+        if self.onBox:
+            rect = self.rectangles[self.index]
+            painter.setPen(QPen(QColor(255, 255, 255), 6, Qt.SolidLine))
+            topLeft = rect.topLeft()
+            botRgiht = rect.bottomRight()
+            x1, y1, x2, y2 = topLeft.x(), topLeft.y(), botRgiht.x(), botRgiht.y()
+
+            # Top 3 Points
+            painter.drawPoint(topLeft)
+            painter.drawPoint(QPoint((x1 + x2)//2, y1))
+            painter.drawPoint(QPoint(x2, y1))
+            # Middle 2 Points
+            painter.drawPoint(QPoint(x1, (y1+y2)//2))
+            painter.drawPoint(QPoint(x2, (y1+y2)//2))
+            # Bottom 3 Points
+            painter.drawPoint(QPoint(x1, y2))
+            painter.drawPoint(QPoint((x1 + x2)//2, y2))
+            painter.drawPoint(botRgiht)
+            
         painter.end()
 
 
@@ -35,15 +71,38 @@ class myQPaint(QWidget):
         self.pixmap = self.pixmap.scaled(1060, 500, Qt.KeepAspectRatio)
         self.main_image.setPixmap(self.pixmap)
     
-    def drawing_rect(self, start_points:QPoint, end_points:QPoint) -> None:
+    def drawing_rect(self, start_points:QPoint, end_points:QPoint, label:int) -> None:
         box_points = QRectF(start_points + self.Factor, end_points + self.Factor)
-        print(box_points)
         self.copy_pixmap = self.pixmap.copy()
         painter = QPainter(self.copy_pixmap)
-        painter.setPen(QPen(QColor(255,0,0, 255), 3, Qt.SolidLine))
+        painter.setPen(QPen(CLASS_COLOR[label], 3, Qt.SolidLine))
         painter.drawRect(box_points)
         self.main_image.setPixmap(self.copy_pixmap)
-
         self.previousRect = box_points
+        painter.end()
+    
+    def drawing_points(self, box_index:int) -> None:
+        # Make New Drawing Painter
+        self.copy_pixmap = self.pixmap.copy()
+        painter = QPainter(self.copy_pixmap)
+        painter.setPen(QPen(QColor(255, 255, 255), 6, Qt.SolidLine))
+        rect = self.main_image.rectangles[box_index]
+        topLeft = rect.topLeft() + self.Factor
+        botRgiht = rect.bottomRight() + self.Factor
+        x1, y1, x2, y2 = topLeft.x(), topLeft.y(), botRgiht.x(), botRgiht.y()
+
+        # Top 3 Points
+        painter.drawPoint(topLeft)
+        painter.drawPoint(QPoint((x1 + x2)//2, y1))
+        painter.drawPoint(QPoint(x2, y1))
+        # Middle 2 Points
+        painter.drawPoint(QPoint(x1, (y1+y2)//2))
+        painter.drawPoint(QPoint(x2, (y1+y2)//2))
+        # Bottom 3 Points
+        painter.drawPoint(QPoint(x1, y2))
+        painter.drawPoint(QPoint((x1 + x2)//2, y2))
+        painter.drawPoint(botRgiht)
+
+        self.main_image.setPixmap(self.copy_pixmap)
    
      
