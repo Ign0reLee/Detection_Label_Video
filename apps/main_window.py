@@ -4,12 +4,14 @@ import sys
 import numpy as np
 
 from PyQt5 import uic
-from PyQt5.QtGui import QKeySequence, QPainter, QImage, QPixmap
-from PyQt5.QtCore import QBasicTimer,  pyqtSlot, Qt, QPoint, QRect, QRectF 
-from PyQt5.QtWidgets import  QFileDialog, QLabel,  QMainWindow, QMessageBox, QVBoxLayout, qApp
+from PyQt5.QtGui import QKeySequence, QPainter, QImage, QPixmap, QCursor
+from PyQt5.QtCore import QBasicTimer, QEvent, pyqtSignal,  pyqtSlot, Qt, QPoint, QRect, QRectF 
+from PyQt5.QtWidgets import  QApplication, QFileDialog, QLabel,  QMainWindow, QMessageBox, QVBoxLayout, qApp
 
 from ui.Main_ui import *
+from .myShape import *
 from .draw_api import *
+
 
 
 class Detection_Label_Main_Window(QMainWindow):
@@ -20,14 +22,18 @@ class Detection_Label_Main_Window(QMainWindow):
         self.label        = 1
         self.startPoint   = QPoint()
         self.lastPoint    = QPoint()
+        self.mouseOri     = QPoint()
         self.num_frames   = 0
         self.drawing      = False
         self.onFrame      = False
         self.onBox        = False
+        self.onCntrl      = False
+        self.box_move     = False
         self.boxNum       = -1
         self.timer        = QBasicTimer()
         self.main_layout  = QVBoxLayout()
         self.paint_widget = myQPaint()
+        self.moveFactor   = 50
         self.setMouseTracking(True)
 
 
@@ -63,12 +69,13 @@ class Detection_Label_Main_Window(QMainWindow):
 
         # # Video Controllor Group
         self.main_ui.button_pause.clicked.connect(self.on_Pause)
-        self.main_ui.button_pause.setShortcut(QKeySequence("S"))
-        
+
         # Video Viewer
         self.setMouseTracking(True)
         self.main_ui.centralwidget.setMouseTracking(True)
         self.main_ui.frame_main_video.setMouseTracking(True)
+        self.paint_widget.setMouseTracking(True)
+        self.paint_widget.main_image.setMouseTracking(True)
         self.statusbar = self.statusBar()
         self.mouseFactor = QPoint(20,50)
 
@@ -92,7 +99,6 @@ class Detection_Label_Main_Window(QMainWindow):
     #                                               Qt Button Controller
     # =====================================================================================================================
     
-    
     @pyqtSlot()
     def on_folderOpen(self):
         r"""
@@ -110,6 +116,7 @@ class Detection_Label_Main_Window(QMainWindow):
         self.video_path =  QFileDialog.getOpenFileName(self, "Select Video", filter="*.mp4 *.avi")[0]
         self.main_ui.text_video_path.setText(self.video_path)
         self.main_ui.text_video_path.setStyleSheet("color:black;")
+        self.main_ui.button_video_path.clearFocus()
     
     @pyqtSlot()
     def on_split(self):
@@ -126,6 +133,10 @@ class Detection_Label_Main_Window(QMainWindow):
             return 
         
         self.video_spliter()
+        self.main_ui.text_FPS.clearFocus()
+        self.main_ui.text_class.clearFocus()
+        self.main_ui.text_NMS.clearFocus()
+        self.main_ui.button_split_video.clearFocus()
 
     @pyqtSlot()
     def on_Pause(self):
@@ -136,10 +147,12 @@ class Detection_Label_Main_Window(QMainWindow):
         if self.timer.isActive():
             self.timer.stop()
             self.main_ui.button_pause.setText("Start")
+            self.main_ui.button_pause.clearFocus()
 
         else:
             self.timer.start(self.num_frames, self)
             self.main_ui.button_pause.setText("Pause")
+            self.main_ui.button_pause.clearFocus()
 
     @pyqtSlot()        
     def on_Chnage_Label(self):
@@ -147,7 +160,8 @@ class Detection_Label_Main_Window(QMainWindow):
         Change Label When Box Selected
         """
         now_label = self.main_ui.text_label_change.currentIndex()
-        self.paint_widget.main_image.labels[self.boxNum] = now_label
+        self.paint_widget.main_image.rectangles[self.boxNum].mainRect.label = now_label
+        self.paint_widget.main_image.rectangles[self.boxNum].mainRect.updateLabel()
         self.paint_widget.main_image.update()
     
     @pyqtSlot()
@@ -157,7 +171,6 @@ class Detection_Label_Main_Window(QMainWindow):
         """
         try:
             del self.paint_widget.main_image.rectangles[self.boxNum]
-            del self.paint_widget.main_image.labels[self.boxNum]
             self.onBox = self.paint_widget.main_image.onBox = False
             self.boxNum = self.paint_widget.main_image.index = None
             self.paint_widget.main_image.update()
@@ -192,6 +205,7 @@ class Detection_Label_Main_Window(QMainWindow):
         now_text_color = (255, 255, 255) if self.label == 0 else (0, 0, 0)
         self.main_ui.text_label_selected.setStyleSheet(f"background-color: rgba{now_color}; color : rgb{now_text_color}")
         self.main_ui.text_label_selected.show()
+        self.main_ui.text_label_selected.clearFocus()
 
         # Setting for label setting combobox back ground color
         now_label = self.main_ui.text_label_change.currentIndex()
@@ -199,53 +213,69 @@ class Detection_Label_Main_Window(QMainWindow):
         now_text_color = (255, 255, 255) if now_label == 0 else (0, 0, 0)
         self.main_ui.text_label_change.setStyleSheet(f"background-color: rgba{now_color}; color : rgb{now_text_color}")
         self.main_ui.text_label_change.show()
+        self.main_ui.text_label_change.clearFocus()
+        
 
     
     #=====================================================================================================================
-    #                                                Mouse Evnet Handler
+    #                                            Key and Mouse Evnet Handler
     #=====================================================================================================================
+    def keyPressEvent(self, event) -> None:
+        super().keyPressEvent(event)
+
+        if event.key() == Qt.Key_Control:
+            self.onCntrl = True
+
+        elif event.key() == Qt.Key_S:
+            self.main_ui.button_pause.click()
+        
+        elif event.key() == Qt.Key_Delete:
+            self.main_ui.button_box_delete.click()
+        
+        elif event.key() == Qt.Key_Left and self.onBox:
+            self.paint_widget.main_image.rectangles[self.boxNum].moveBoxes(QPoint(1, 0))
+            self.paint_widget.main_image.update()
+
+        elif event.key() == Qt.Key_Right and self.onBox:
+            self.paint_widget.main_image.rectangles[self.boxNum].moveBoxes(QPoint(-1, 0))
+            self.paint_widget.main_image.update()
+            
+        elif event.key() == Qt.Key_Up and self.onBox:
+            self.paint_widget.main_image.rectangles[self.boxNum].moveBoxes(QPoint(0, 1))
+            self.paint_widget.main_image.update()
+            
+        elif event.key() == Qt.Key_Down and self.onBox:
+            self.paint_widget.main_image.rectangles[self.boxNum].moveBoxes(QPoint(0, -1))
+            self.paint_widget.main_image.update()
+            
+
+    
+    def keyReleaseEvent(self, event) -> None:
+        super().keyReleaseEvent(event)
+        if event.key() == Qt.Key_Control:
+            self.onCntrl = False
+      
+
 
     def mousePressEvent(self, event) -> None:
         super().mousePressEvent(event)
-
         # Mouse Pose Editor
         mousePos = event.pos() - self.mouseFactor
+        mouseX, mouseY = mousePos.x(), mousePos.y()
 
         # Combobox setting
         self.setting_combobox()
 
-        # Pressed If On Frame and Clicked Left Button - > Drawing Method
-        if event.button() == Qt.LeftButton and self.onFrame:
+        # Pressed If On Frame and Clicked Left Button + Cntrl Button - > Drawing Method
+        if event.button() == Qt.LeftButton and self.onFrame and self.onCntrl:
             self.drawing = True
             self.original_point = event.pos()
             self.startPoint = self.endPoint = mousePos
             print(f"Press Original Point : ({self.original_point})")
             print(f"Press Correction Point : ({self.startPoint}), ({self.endPoint})")
         
-        # Pressed If On Box and Clicked Right Button -> Box Controll Method
-        if event.button() == Qt.RightButton:
-            mouseX, mouseY = mousePos.x(), mousePos.y()
-            for index, rect in enumerate(self.paint_widget.main_image.rectangles):
-                x1, y1, x2, y2 = rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height()
-                if x1 <= mouseX and mouseX <= x2 and y1 <= mouseY and mouseY <= y2:
-                    if self.boxNum != index:
-                        self.onBox = True
-                        self.boxNum = index
-                    else:
-                        self.onBox = True if not self.onBox else False
-                        self.boxNum = -1
-
-                    # Main Box Controll Combobox Update
-                    now_label = self.paint_widget.main_image.labels[self.boxNum]
-                    now_color = (CLASS_COLOR[now_label].red(), CLASS_COLOR[now_label].green(), CLASS_COLOR[now_label].blue(), 100)
-                    now_text_color = (255, 255, 255) if now_label == 0 else (0, 0, 0)
-                    self.main_ui.text_label_change.setCurrentIndex(now_label)
-                    self.main_ui.text_label_change.setStyleSheet(f"background-color: rgba{now_color}; color : rgb{now_text_color}")
-
-                    # Main Image Update
-                    self.paint_widget.main_image.onBox = self.onBox
-                    self.paint_widget.main_image.index = self.boxNum
-                    self.paint_widget.main_image.update()
+        if event.button() == Qt.LeftButton and  self.onBox and self.paint_widget.main_image.rectangles[self.boxNum].mainRect.checkInBox(mouseX, mouseY):
+            self.mouseOri = mousePos
  
             
 
@@ -255,41 +285,100 @@ class Detection_Label_Main_Window(QMainWindow):
         mousePos = event.pos() - self.mouseFactor
         self.statusbar.showMessage(f"Mouse Pos = ({event.x()}, {event.y()}), global = ({event.globalX()}, {event.globalY()}), local = ({event.localPos().x()}, {event.localPos().y()}), On Frame = {self.onFrame}, Drawing = {self.drawing}, onBox = {self.onBox}")
         
+
         if mousePos.x() < self.main_ui.frame_main_video.frameGeometry().bottomRight().x() and \
             mousePos.y() <  self.main_ui.frame_main_video.frameGeometry().bottomRight().y():
             self.onFrame = True
+            QApplication.setOverrideCursor(QCursor(Qt.ArrowCursor))
         else:
             self.onFrame = False
             self.drawing = False
+            QApplication.setOverrideCursor(QCursor(Qt.ArrowCursor))
 
-        if self.drawing and event.buttons and Qt.LeftButton:
+        if self.drawing and event.buttons and Qt.LeftButton and self.onCntrl:
             self.endPoint =  mousePos
-            print(f"Moving Original Point : ({self.original_point})")
-            print(f"Moving Point : ({self.startPoint}), ({self.endPoint})")
             self.paint_widget.drawing_rect(self.startPoint, self.endPoint, self.label)
             self.update()
             self.paint_widget.main_image.update()
             self.main_layout.update()
 
+        if self.onBox:
+            mouseX, mouseY = mousePos.x(), mousePos.y()
+            rect = self.paint_widget.main_image.rectangles[self.boxNum]
+
+            if rect.checkInBox(mouseX, mouseY):
+                QApplication.setOverrideCursor(QCursor(Qt.SizeAllCursor))
+                if event.buttons() == Qt.LeftButton:
+                    rect.moveBoxes((self.mouseOri - mousePos)/ self.moveFactor)
+                    self.paint_widget.main_image.update()
+                    self.box_move = True
+                    
+            else:
+                for index, pts in enumerate(rect.rectPts):
+                    if pts.checkInBox(mouseX, mouseY, 3):
+                        if event.buttons() == Qt.LeftButton:
+                            self.box_move = True
+                        break
         
     def mouseReleaseEvent(self, event)->None:
         super().mouseReleaseEvent(event)
+        
         # Mouse Pose Editor
         mousePos = event.pos() - self.mouseFactor
-        if event.button() == Qt.LeftButton and self.drawing:
+        mouseX, mouseY = mousePos.x(), mousePos.y()
+
+        # Pressed If On Box and Clicked Left Button -> Box Controll Method
+        if event.button() == Qt.LeftButton and self.onFrame  \
+           and (not self.drawing) and self.paint_widget.main_image.rectangles:
+            mouseX, mouseY = mousePos.x(), mousePos.y()
+            for index, rect in enumerate(self.paint_widget.main_image.rectangles):
+                if rect.checkInBox(mouseX, mouseY):
+                    if self.boxNum != index or self.box_move:
+                        self.onBox = True
+                        self.boxNum = index
+                    else:
+                        self.onBox = True if not self.onBox else False
+                        self.boxNum = -1
+                        
+                    # Main Box Controll Combobox Update
+                    now_label = rect.mainRect.label
+                    now_color = CLASS_COLORS[now_label]
+                    now_text_color = (255, 255, 255) if now_label == 0 else (0, 0, 0)
+                    self.main_ui.text_label_change.setCurrentIndex(now_label)
+                    self.main_ui.text_label_change.setStyleSheet(f"background-color: rgba{now_color}; color : rgb{now_text_color}")
+                    self.main_ui.text_label_change.clearFocus()
+
+                    # Main Image Update
+                    self.paint_widget.main_image.onBox = self.onBox
+                    self.paint_widget.main_image.index = self.boxNum
+                    self.paint_widget.main_image.update()
+
+        # Drawing End If Drawing and Clicked Left Button + Ctrl -> Box Drawing End Method
+        if event.button() == Qt.LeftButton and self.drawing and self.onCntrl:
+            # Intialize Parameter
             self.drawing = False
             self.endPoint = mousePos
+            self.paint_widget.main_image.clear()
+            self.paint_widget.main_image.setPixmap(self.paint_widget.pixmap)
+            self.paint_widget.setMouseTracking(True)
 
-            print(f"Release Original Point : ({self.original_point})")
-            print(f"Release Point : ({self.startPoint}), ({self.endPoint})")
-            self.paint_widget.main_image.rectangles.append(QRectF(self.startPoint, self.endPoint))
-            self.paint_widget.main_image.labels.append(self.label)
+            # Add Rectangles
+            self.paint_widget.main_image.rectangles.append(rectInfo(start_points=self.startPoint, end_points=self.endPoint, label=self.label, ptsSize=6))
             self.paint_widget.main_image.onBox = self.onBox =  True
             self.paint_widget.main_image.index = self.boxNum = len(self.paint_widget.main_image.rectangles) - 1
+
             print(f"Main Rectangles : {self.paint_widget.main_image.rectangles}")
             print(f"Main Labels     : {self.paint_widget.main_image.labels}")
+
+            # Update Last Drawing
             self.paint_widget.main_image.update()
-            # self.paint_widget.drawing_points(self.boxNum)
+            self.paint_widget.update()
+        
+        if self.box_move:
+            self.box_move = False
+            self.paint_widget.main_image.rectangles[self.boxNum].mainRect.qBoxpts
+        
+
             
         self.startPoint = self.endPoint = QPoint()
  
@@ -306,6 +395,7 @@ class Detection_Label_Main_Window(QMainWindow):
         #Initialize Paint Rectangle
         self.paint_widget.main_image.rectangles = []
         self.paint_widget.main_image.labels     = []
+        self.paint_widget.main_image.onBox = self.onBox =  False
 
         # Error Checker
         try:

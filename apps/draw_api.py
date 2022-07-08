@@ -1,6 +1,6 @@
 
 from PyQt5 import uic
-from PyQt5.QtGui import QColor, QPainter, QImage, QPixmap, QPen
+from PyQt5.QtGui import QColor, QPainter, QImage, QPixmap, QPen, QBrush
 from PyQt5.QtCore import QBasicTimer, QObject, QPoint, QRect, QRectF,  pyqtSlot, Qt
 from PyQt5.QtWidgets import  QLabel, QWidget
 
@@ -27,34 +27,19 @@ class myQLabel(QLabel):
     def paintEvent(self, QPaintEvent):
         super(myQLabel, self).paintEvent(QPaintEvent)
         painter = QPainter(self)
-        # Draw Rectangles
-        for label, rect in  zip(self.labels ,self.rectangles):
-            painter.setPen(QPen(CLASS_COLOR[label], 3, Qt.SolidLine))
-            painter.drawRect(rect)
         
-        print(self.onBox)
-        if self.onBox:
-            rect = self.rectangles[self.index]
-            painter.setPen(QPen(QColor(255, 255, 255), 6, Qt.SolidLine))
-            topLeft = rect.topLeft()
-            botRgiht = rect.bottomRight()
-            x1, y1, x2, y2 = topLeft.x(), topLeft.y(), botRgiht.x(), botRgiht.y()
+        for rect in self.rectangles:
+            painter.setPen(QPen(rect.mainRect.qColor, 3, Qt.SolidLine))
+            painter.drawRect(rect.mainRect.qBoxpts)
 
-            # Top 3 Points
-            painter.drawPoint(topLeft)
-            painter.drawPoint(QPoint((x1 + x2)//2, y1))
-            painter.drawPoint(QPoint(x2, y1))
-            # Middle 2 Points
-            painter.drawPoint(QPoint(x1, (y1+y2)//2))
-            painter.drawPoint(QPoint(x2, (y1+y2)//2))
-            # Bottom 3 Points
-            painter.drawPoint(QPoint(x1, y2))
-            painter.drawPoint(QPoint((x1 + x2)//2, y2))
-            painter.drawPoint(botRgiht)
-            
+        if self.onBox:
+            painter.setBrush(QBrush(self.rectangles[self.index].topLeft.qColor))
+            for pts in self.rectangles[self.index].rectPts:
+                painter.fillRect(pts.qBoxpts, QBrush(pts.qColor))
+
         painter.end()
 
-
+        
 
 class myQPaint(QWidget):
     def __init__(self):
@@ -65,6 +50,10 @@ class myQPaint(QWidget):
     
     def initUI(self):
         self.main_image = myQLabel(self)
+    
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        self.main_image.setPixmap(self.pixmap)
 
     def draw_img(self, img:QImage):
         self.pixmap = QPixmap(img)
