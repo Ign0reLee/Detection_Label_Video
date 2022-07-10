@@ -309,15 +309,18 @@ class Detection_Label_Main_Window(QMainWindow):
             if rect.checkInBox(mouseX, mouseY):
                 QApplication.setOverrideCursor(QCursor(Qt.SizeAllCursor))
                 if event.buttons() == Qt.LeftButton:
+                    self.box_move = True
                     rect.moveBoxes((self.mouseOri - mousePos)/ self.moveFactor)
                     self.paint_widget.main_image.update()
-                    self.box_move = True
+                    
                     
             else:
                 for index, pts in enumerate(rect.rectPts):
                     if pts.checkInBox(mouseX, mouseY, 3):
                         if event.buttons() == Qt.LeftButton:
                             self.box_move = True
+                            rect.extendBoxes((self.mouseOri - mousePos)/ self.moveFactor, index)
+                            self.paint_widget.main_image.update()
                         break
         
     def mouseReleaseEvent(self, event)->None:

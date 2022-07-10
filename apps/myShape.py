@@ -106,21 +106,34 @@ class rectInfo(object):
     def __init__(self, **kwargs)->None:
         r"""
         """
-        self.ptsSize       = kwargs["ptsSize"] // 2
+        self.ptsSize  = kwargs["ptsSize"] // 2
+        self.label    = kwargs["label"]
         self.mainRect = BaseRect(kwargs["start_points"], kwargs["end_points"], kwargs["label"]) 
+        
 
         self.__boxPTS__()
-        self.topLeft  = digRect(QPoint(self.minX1, self.minY1), QPoint(self.maxX1, self.maxY1), label=kwargs["label"], left=True)
-        self.topMid   = verRect(QPoint(self.minMidX, self.minY1), QPoint(self.maxMidX, self.maxY1), label=kwargs["label"])
-        self.topRight = digRect(QPoint(self.minX2, self.minY1), QPoint(self.maxX2, self.maxY1), label=kwargs["label"], left=False)
-        self.midLeft  = horRect(QPoint(self.minX1, self.minMidY), QPoint(self.maxX1, self.maxMidY), label=kwargs["label"])
-        self.midRight = horRect(QPoint(self.minX2, self.minMidY), QPoint(self.maxX2, self.maxMidY), label=kwargs["label"])
-        self.botLeft  = digRect(QPoint(self.minX1, self.minY2), QPoint(self.maxX1, self.maxY2), label=kwargs["label"], left=False)
-        self.botMid   = verRect(QPoint(self.minMidX, self.minY2), QPoint(self.maxMidX, self.maxY2), label=kwargs["label"])
-        self.botRight = digRect(QPoint(self.minX2, self.minY2), QPoint(self.maxX2, self.maxY2), label=kwargs["label"], left=True)
+        self.setPoint()
 
-        self.rectPts  = (self.topLeft, self.topMid, self.topRight, self.midLeft, self.midRight, self.botLeft, self.botMid, self.botRight)
+        # self.topLeft  = digRect(QPoint(self.minX1, self.minY1), QPoint(self.maxX1, self.maxY1), label=kwargs["label"], left=True)
+        # self.topMid   = verRect(QPoint(self.minMidX, self.minY1), QPoint(self.maxMidX, self.maxY1), label=kwargs["label"])
+        # self.topRight = digRect(QPoint(self.minX2, self.minY1), QPoint(self.maxX2, self.maxY1), label=kwargs["label"], left=False)
+        # self.midLeft  = horRect(QPoint(self.minX1, self.minMidY), QPoint(self.maxX1, self.maxMidY), label=kwargs["label"])
+        # self.midRight = horRect(QPoint(self.minX2, self.minMidY), QPoint(self.maxX2, self.maxMidY), label=kwargs["label"])
+        # self.botLeft  = digRect(QPoint(self.minX1, self.minY2), QPoint(self.maxX1, self.maxY2), label=kwargs["label"], left=False)
+        # self.botMid   = verRect(QPoint(self.minMidX, self.minY2), QPoint(self.maxMidX, self.maxY2), label=kwargs["label"])
+        # self.botRight = digRect(QPoint(self.minX2, self.minY2), QPoint(self.maxX2, self.maxY2), label=kwargs["label"], left=True)
+        # self.rectPts  = (self.topLeft, self.topMid, self.topRight, self.midLeft, self.midRight, self.botLeft, self.botMid, self.botRight)
+
+        self.direction = ((QPoint(1, 1), QPoint(0,0)),
+                           (QPoint(0, 1),QPoint(0, 0)),
+                           (QPoint(1, 1),QPoint(0, 0)),
+                           (QPoint(1, 0),QPoint(0, 0)),
+                           (QPoint(0, 0), QPoint(1, 0)), 
+                           (QPoint(0, 0), QPoint(1, 1)),
+                           (QPoint(0, 0), QPoint(0, 1)),
+                           (QPoint(0, 0), QPoint(1, 1)))
     
+
     def __boxPTS__(self) -> None:
         # All Box Points Calculation
         self.minX1 = self.mainRect.x1 - self.ptsSize
@@ -135,14 +148,33 @@ class rectInfo(object):
         self.maxMidX = ((self.mainRect.x1 + self.mainRect.x2) // 2) + self.ptsSize
         self.minMidY = ((self.mainRect.y1 + self.mainRect.y2) // 2) - self.ptsSize
         self.maxMidY = ((self.mainRect.y1 + self.mainRect.y2) // 2) + self.ptsSize
-    
+
+    def setPoint(self) -> None:
+
+        self.topLeft  = digRect(QPoint(self.minX1, self.minY1), QPoint(self.maxX1, self.maxY1), label=self.label, left=True)
+        self.topMid   = verRect(QPoint(self.minMidX, self.minY1), QPoint(self.maxMidX, self.maxY1), label=self.label)
+        self.topRight = digRect(QPoint(self.minX2, self.minY1), QPoint(self.maxX2, self.maxY1), label=self.label, left=False)
+        self.midLeft  = horRect(QPoint(self.minX1, self.minMidY), QPoint(self.maxX1, self.maxMidY), label=self.label)
+        self.midRight = horRect(QPoint(self.minX2, self.minMidY), QPoint(self.maxX2, self.maxMidY), label=self.label)
+        self.botLeft  = digRect(QPoint(self.minX1, self.minY2), QPoint(self.maxX1, self.maxY2), label=self.label, left=False)
+        self.botMid   = verRect(QPoint(self.minMidX, self.minY2), QPoint(self.maxMidX, self.maxY2), label=self.label)
+        self.botRight = digRect(QPoint(self.minX2, self.minY2), QPoint(self.maxX2, self.maxY2), label=self.label, left=True)
+        self.rectPts  = (self.topLeft, self.topMid, self.topRight, self.midLeft, self.midRight, self.botLeft, self.botMid, self.botRight)
+
+
     def checkInBox(self, mouseX: int, mouseY: int, margine: int = 0) -> bool:
         return self.mainRect.checkInBox(mouseX, mouseY, margine)
     
-    def moveBoxes(self, movePts:QPoint):
+    def moveBoxes(self, movePts:QPoint) -> None:
         self.mainRect.qBoxpts.moveTo(self.mainRect.qBoxpts.topLeft() - movePts)
         self.mainRect.updatePos()
         for rect in self.rectPts:
             rect.qBoxpts.moveTo(rect.qBoxpts.topLeft() - movePts)
             rect.updatePos()
 
+    def extendBoxes(self, movePts:QPoint, direction:int) -> None:
+        topLeft = self.mainRect.qBoxpts.topLeft() - (movePts* self.direction[direction][0]) 
+        botRgiht = self.mainRect.qBoxpts.bottomRight() - (movePts * self.direction[direction][1])
+        self.mainRect.qBoxpts = QRectF(topLeft, botRgiht)
+        self.__boxPTS__()
+        self.setPoint()

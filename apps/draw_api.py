@@ -70,28 +70,28 @@ class myQPaint(QWidget):
         self.previousRect = box_points
         painter.end()
     
-    def drawing_points(self, box_index:int) -> None:
-        # Make New Drawing Painter
-        self.copy_pixmap = self.pixmap.copy()
-        painter = QPainter(self.copy_pixmap)
-        painter.setPen(QPen(QColor(255, 255, 255), 6, Qt.SolidLine))
-        rect = self.main_image.rectangles[box_index]
-        topLeft = rect.topLeft() + self.Factor
-        botRgiht = rect.bottomRight() + self.Factor
-        x1, y1, x2, y2 = topLeft.x(), topLeft.y(), botRgiht.x(), botRgiht.y()
+    # def drawing_points(self, box_index:int) -> None:
+    #     # Make New Drawing Painter
+    #     self.copy_pixmap = self.pixmap.copy()
+    #     painter = QPainter(self.copy_pixmap)
+    #     painter.setPen(QPen(QColor(255, 255, 255), 6, Qt.SolidLine))
+    #     rect = self.main_image.rectangles[box_index]
+    #     topLeft = rect.topLeft() + self.Factor
+    #     botRgiht = rect.bottomRight() + self.Factor
+    #     x1, y1, x2, y2 = topLeft.x(), topLeft.y(), botRgiht.x(), botRgiht.y()
 
-        # Top 3 Points
-        painter.drawPoint(topLeft)
-        painter.drawPoint(QPoint((x1 + x2)//2, y1))
-        painter.drawPoint(QPoint(x2, y1))
-        # Middle 2 Points
-        painter.drawPoint(QPoint(x1, (y1+y2)//2))
-        painter.drawPoint(QPoint(x2, (y1+y2)//2))
-        # Bottom 3 Points
-        painter.drawPoint(QPoint(x1, y2))
-        painter.drawPoint(QPoint((x1 + x2)//2, y2))
-        painter.drawPoint(botRgiht)
+    #     # Top 3 Points
+    #     painter.drawPoint(topLeft)
+    #     painter.drawPoint(QPoint((x1 + x2)//2, y1))
+    #     painter.drawPoint(QPoint(x2, y1))
+    #     # Middle 2 Points
+    #     painter.drawPoint(QPoint(x1, (y1+y2)//2))
+    #     painter.drawPoint(QPoint(x2, (y1+y2)//2))
+    #     # Bottom 3 Points
+    #     painter.drawPoint(QPoint(x1, y2))
+    #     painter.drawPoint(QPoint((x1 + x2)//2, y2))
+    #     painter.drawPoint(botRgiht)
 
-        self.main_image.setPixmap(self.copy_pixmap)
+    #     self.main_image.setPixmap(self.copy_pixmap)
    
      
