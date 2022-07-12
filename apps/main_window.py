@@ -4,6 +4,7 @@ import cv2
 import sys
 import json
 import numpy as np
+import copy
 
 # Import Detectron2 Libraries
 from detectron2 import model_zoo
@@ -319,6 +320,18 @@ class Detection_Label_Main_Window(QMainWindow):
         elif event.key() == Qt.Key_Down and self.onBox:
             self.paint_widget.main_image.rectangles[self.boxNum].moveBoxes(QPoint(0, -1))
             self.paint_widget.main_image.update()
+        
+        elif event.key() == (Qt.Key_Control and Qt.Key_C) and self.onBox:
+            print("copy!")
+            self.copy_rect = copy.deepcopy(self.paint_widget.main_image.rectangles[self.boxNum])
+            self.copy_rect.moveBoxes(QPoint(-10, 0))
+            self.paint_widget.main_image.update()
+            
+        elif event.key() == (Qt.Key_Control and Qt.Key_V) and self.onBox:
+            self.paint_widget.main_image.rectangles.append(copy.deepcopy(self.copy_rect))
+            self.boxNum = len(self.paint_widget.main_image.rectangles) - 1
+            self.main_ui.lst_box_output.addItem(CLASS_NAME[self.copy_rect.mainRect.label])
+            self.paint_widget.main_image.update()
             
 
     
@@ -480,6 +493,7 @@ class Detection_Label_Main_Window(QMainWindow):
         self.paint_widget.main_image.rectangles = []
         self.paint_widget.main_image.labels     = []
         self.paint_widget.main_image.onBox = self.onBox =  False
+        self.main_ui.lst_box_output.clear()
 
         # Error Checker
         try:
@@ -499,8 +513,15 @@ class Detection_Label_Main_Window(QMainWindow):
             self.updateJson()
         # Run Detectron2
         outputs = self.predictor(self.frame)
-        print(outputs["instances"].to("cpu"))
-        
+        outputs = outputs["instances"].to("cpu").get_fields()
+        for box, label in zip(outputs["pred_boxes"].tensor.numpy(), outputs["pred_classes"].numpy()):
+            box = box//2
+            label += 1
+            self.paint_widget.main_image.rectangles.append(rectInfo(start_points=QPoint(box[0], box[1] - self.paint_widget.Factor.y()),
+                                                                    end_points=QPoint(box[2], box[3] - self.paint_widget.Factor.y()),
+                                                                    label=int(label), ptsSize=6))
+            self.main_ui.lst_box_output.addItem(CLASS_NAME[label])        
+
         # Run Image to QTImage
         img = self.toQImage(self.frame)
 
