@@ -2,3 +2,6 @@ __pycache__
 test
 out_dir
 *.ipynb
+weights/**
+!weights/README.md
+pycocotools

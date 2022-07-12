@@ -1,14 +1,23 @@
+# import common Libraries
 import os
 import cv2
 import sys
 import json
 import numpy as np
 
-from PyQt5 import uic
-from PyQt5.QtGui import QKeySequence, QPainter, QImage, QPixmap, QCursor
-from PyQt5.QtCore import QBasicTimer, QEvent, QModelIndex, pyqtSignal,  pyqtSlot, Qt, QPoint, QRect, QRectF 
-from PyQt5.QtWidgets import  QApplication, QFileDialog, QLabel,  QMainWindow, QMessageBox, QVBoxLayout, qApp
+# Import Detectron2 Libraries
+from detectron2 import model_zoo
+from detectron2.engine import DefaultPredictor
+from detectron2.config import get_cfg
+from detectron2.data import MetadataCatalog
+from detectron2.data.datasets import register_coco_instances
 
+# Import PyQT Libaries
+from PyQt5.QtGui import QImage, QCursor
+from PyQt5.QtCore import QBasicTimer, pyqtSlot, Qt, QPoint
+from PyQt5.QtWidgets import  QApplication, QFileDialog,  QMainWindow, QMessageBox, QVBoxLayout, qApp
+
+# Import my Libaries
 from ui.Main_ui import *
 from .myShape import *
 from .draw_api import *
@@ -153,7 +162,8 @@ class Detection_Label_Main_Window(QMainWindow):
         # Check the error
         if self.check_video_error():
             return 
-        
+
+        self.loadDetectron()
         self.video_spliter()
         self.main_ui.text_FPS.clearFocus()
         self.main_ui.text_class.clearFocus()
@@ -487,6 +497,9 @@ class Detection_Label_Main_Window(QMainWindow):
             # Save Image Update Label
             self.saveImage()
             self.updateJson()
+        # Run Detectron2
+        outputs = self.predictor(self.frame)
+        print(outputs["instances"].to("cpu"))
         
         # Run Image to QTImage
         img = self.toQImage(self.frame)
@@ -614,13 +627,14 @@ class Detection_Label_Main_Window(QMainWindow):
             return True
 
         return False
-   
-        
-        
-
-        
-
-
+    
+    def loadDetectron(self):
+        cfg = get_cfg()
+        cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/retinanet_R_50_FPN_1x.yaml"))
+        cfg.MODEL.WEIGHTS = os.path.join("weights", "model_0002999.pth")
+        cfg.MODEL.RETINANET.NUM_CLASSES = self.num_class
+        cfg.MODEL.RETINANET.SCORE_THRESH_TEST = self.nms_score
+        self.predictor = DefaultPredictor(cfg)
 
     # def read_video(self):
         
