@@ -45,7 +45,8 @@ class myQPaint(QWidget):
     def __init__(self):
         super(myQPaint, self).__init__()
         self.previousRect = QRect()
-        self.Factor = QPoint(0, 35)
+        self.Factor = QPoint(0, 55)
+        self.resizes = (960, 540)
         self.initUI()
     
     def initUI(self):
@@ -54,10 +55,10 @@ class myQPaint(QWidget):
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         self.main_image.setPixmap(self.pixmap)
-
+        
     def draw_img(self, img:QImage):
         self.pixmap = QPixmap(img)
-        self.pixmap = self.pixmap.scaled(1060, 500, Qt.KeepAspectRatio)
+        self.pixmap = self.pixmap.scaled(self.resizes[0], self.resizes[1], Qt.KeepAspectRatio)
         self.main_image.setPixmap(self.pixmap)
     
     def drawing_rect(self, start_points:QPoint, end_points:QPoint, label:int) -> None:

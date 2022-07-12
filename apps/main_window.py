@@ -1,18 +1,24 @@
 import os
 import cv2
 import sys
+import json
 import numpy as np
 
 from PyQt5 import uic
 from PyQt5.QtGui import QKeySequence, QPainter, QImage, QPixmap, QCursor
-from PyQt5.QtCore import QBasicTimer, QEvent, pyqtSignal,  pyqtSlot, Qt, QPoint, QRect, QRectF 
+from PyQt5.QtCore import QBasicTimer, QEvent, QModelIndex, pyqtSignal,  pyqtSlot, Qt, QPoint, QRect, QRectF 
 from PyQt5.QtWidgets import  QApplication, QFileDialog, QLabel,  QMainWindow, QMessageBox, QVBoxLayout, qApp
 
 from ui.Main_ui import *
 from .myShape import *
 from .draw_api import *
 
-
+OS = sys.platform
+if OS == "win32" or OS == "win64":
+    SPLITER = "\\"
+else:
+    SPLITER = "/"
+print(f"OS system... {OS}, spliting by {SPLITER}")
 
 class Detection_Label_Main_Window(QMainWindow):
     def __init__(self):
@@ -24,18 +30,22 @@ class Detection_Label_Main_Window(QMainWindow):
         self.lastPoint    = QPoint()
         self.mouseOri     = QPoint()
         self.num_frames   = 0
+        self.direction    = 0
         self.drawing      = False
         self.onFrame      = False
         self.onBox        = False
         self.onCntrl      = False
         self.box_move     = False
+        self.extend_box   = False
+        self.save_folder  = None
+        self.json_data    = None
         self.boxNum       = -1
         self.timer        = QBasicTimer()
         self.main_layout  = QVBoxLayout()
         self.paint_widget = myQPaint()
-        self.moveFactor   = 50
+        self.moveFactor   = 20
+        self.resizeFactor = 2
         self.setMouseTracking(True)
-
 
         # ui connect and ready
         self.main_ui = Ui_MainWindow()
@@ -54,12 +64,12 @@ class Detection_Label_Main_Window(QMainWindow):
         # Main Menu
         self.main_ui.EXIT.setShortcut('Alt+F4')
         self.main_ui.EXIT.setStatusTip('Exit application')
-        self.main_ui.EXIT.triggered.connect(qApp.quit)
+        self.main_ui.EXIT.triggered.connect(self.on_End)
 
         # Out Button Group
-        self.main_ui.out_botton.accepted.connect(qApp.quit)
+        self.main_ui.out_botton.accepted.connect(self.on_End)
         self.main_ui.out_botton.button(QtWidgets.QDialogButtonBox.Ok).setShortcut("Ctrl+return")
-        self.main_ui.out_botton.rejected.connect(qApp.quit)
+        self.main_ui.out_botton.rejected.connect(self.on_End)
         self.main_ui.out_botton.button(QtWidgets.QDialogButtonBox.Cancel).setShortcut("Alt+F4")
 
         # Video Setting Group
@@ -93,11 +103,21 @@ class Detection_Label_Main_Window(QMainWindow):
         self.setting_combobox()
         self.main_ui.text_label_change.currentIndexChanged.connect(self.setting_combobox)
         self.main_ui.text_label_selected.currentIndexChanged.connect(self.setting_combobox)
+
+        # list box clicked event initlaize
+        self.main_ui.lst_box_output.clicked.connect(self.click_lst_box)
     
     
     # =====================================================================================================================
     #                                               Qt Button Controller
     # =====================================================================================================================
+    @pyqtSlot()
+    def on_End(self):
+        if self.save_folder and self.json_data:
+            self.saveImage()
+            self.updateJson()
+            self.makeJson()
+        qApp.quit()
     
     @pyqtSlot()
     def on_folderOpen(self):
@@ -107,6 +127,8 @@ class Detection_Label_Main_Window(QMainWindow):
         self.save_folder = QFileDialog.getExistingDirectory(self, "Select Directory", os.path.join("."))
         self.main_ui.text_save_path.setText(self.save_folder)
         self.main_ui.text_save_path.setStyleSheet("color:black;")
+        self.main_ui.button_set_save_path.clearFocus()
+
     
     @pyqtSlot()
     def on_videoOpen(self):
@@ -162,21 +184,31 @@ class Detection_Label_Main_Window(QMainWindow):
         now_label = self.main_ui.text_label_change.currentIndex()
         self.paint_widget.main_image.rectangles[self.boxNum].mainRect.label = now_label
         self.paint_widget.main_image.rectangles[self.boxNum].mainRect.updateLabel()
+
+        self.main_ui.lst_box_output.setCurrentRow(self.boxNum)      
+        sel_items = self.main_ui.lst_box_output.selectedItems()
+        for item in sel_items:
+            item.setText(CLASS_NAME[now_label])
         self.paint_widget.main_image.update()
     
     @pyqtSlot()
     def on_Box_Delete(self):
         r"""
         Button Controll For Box Delete
-        """
+        """        
+
         try:
+            self.main_ui.lst_box_output.takeItem(self.boxNum)
             del self.paint_widget.main_image.rectangles[self.boxNum]
             self.onBox = self.paint_widget.main_image.onBox = False
             self.boxNum = self.paint_widget.main_image.index = None
+    
             self.paint_widget.main_image.update()
         except:
             QMessageBox.critical(self, "Box Selected Error!", "Please select the box!")
-
+        
+        self.main_ui.lst_box_output.clearFocus()
+       
 
          
     @pyqtSlot()
@@ -184,20 +216,50 @@ class Detection_Label_Main_Window(QMainWindow):
         r"""
         Contorl Spliting Event
         """
+        # Initialize step
+        self.step         = 0
 
-        self.video = cv2.VideoCapture(self.video_path)
-        width = int(self.video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(self.video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        # Load Video and update info
+        self.video        = cv2.VideoCapture(self.video_path)
+        self.width_video  = int(self.video.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height_video = int(self.video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         frames_per_second = self.video.get(cv2.CAP_PROP_FPS)
-        self.num_frames = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.num_frames   = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        # For Save
+        names             = self.video_path.split(SPLITER)
+        self.saveImgName  = f"{names[-2].split('_')[-1]}_{names[-1].replace('.mp4', '')}" 
+
+        # For Sequence Bar Setting
         self.main_ui.seqBar_main_video.setMaximum(self.num_frames)
 
-        print(width)
-        print(height)
+        # Initialize Json File
+        self.initJson()
+
+        # set Factor
+        self.paint_widget.resizes = (self.width_video// self.resizeFactor, self.height_video//self.resizeFactor)
+        if self.width_video <= self.height_video:
+            self.resizeFactor = self.width_video / self.paint_widget.resizes[0]
+        else:
+            self.resizeFactor = self.height_video / self.paint_widget.resizes[1]
+
+        print(self.width_video)
+        print(self.height_video)
         print(frames_per_second)
         print(self.num_frames)
-    
+        print(self.resizeFactor)
+  
+    def click_lst_box(self):
+        r"""
+        control lst box clicked
+        """
+        self.onBox = True
+        self.boxNum = int(self.main_ui.lst_box_output.currentIndex().row())
+        self.paint_widget.main_image.onBox = self.onBox
+        self.paint_widget.main_image.index = self.boxNum
+        self.paint_widget.main_image.update()
+
+
     def setting_combobox(self):
         # Setting for label setting combobox back ground color
         self.label = self.main_ui.text_label_selected.currentIndex()
@@ -271,10 +333,8 @@ class Detection_Label_Main_Window(QMainWindow):
             self.drawing = True
             self.original_point = event.pos()
             self.startPoint = self.endPoint = mousePos
-            print(f"Press Original Point : ({self.original_point})")
-            print(f"Press Correction Point : ({self.startPoint}), ({self.endPoint})")
         
-        if event.button() == Qt.LeftButton and  self.onBox and self.paint_widget.main_image.rectangles[self.boxNum].mainRect.checkInBox(mouseX, mouseY):
+        if event.button() == Qt.LeftButton and  self.onBox:
             self.mouseOri = mousePos
  
             
@@ -305,23 +365,32 @@ class Detection_Label_Main_Window(QMainWindow):
         if self.onBox:
             mouseX, mouseY = mousePos.x(), mousePos.y()
             rect = self.paint_widget.main_image.rectangles[self.boxNum]
+            
+            if self.extend_box:
+                rect.extendBoxes(self.mouseOri - mousePos, self.direction)
+                self.paint_widget.main_image.update()
+                self.mouseOri -= (self.mouseOri - mousePos)
 
-            if rect.checkInBox(mouseX, mouseY):
-                QApplication.setOverrideCursor(QCursor(Qt.SizeAllCursor))
-                if event.buttons() == Qt.LeftButton:
-                    self.box_move = True
-                    rect.moveBoxes((self.mouseOri - mousePos)/ self.moveFactor)
-                    self.paint_widget.main_image.update()
-                    
-                    
             else:
-                for index, pts in enumerate(rect.rectPts):
-                    if pts.checkInBox(mouseX, mouseY, 3):
-                        if event.buttons() == Qt.LeftButton:
-                            self.box_move = True
-                            rect.extendBoxes((self.mouseOri - mousePos)/ self.moveFactor, index)
-                            self.paint_widget.main_image.update()
-                        break
+                if  not rect.checkInBox(mouseX, mouseY):
+                    for index, pts in enumerate(rect.rectPts):
+                        if pts.checkInBox(mouseX, mouseY, 3):
+                            if event.buttons() == Qt.LeftButton and not self.box_move:
+                                self.box_move = False
+                                self.extend_box = True
+                                self.direction = index
+                            break
+                else:
+                    QApplication.setOverrideCursor(QCursor(Qt.SizeAllCursor))
+                    if event.buttons() == Qt.LeftButton and not self.extend_box:
+                        
+                        self.box_move = True
+                        self.extend_box = False
+                        rect.moveBoxes(self.mouseOri - mousePos)
+                        self.paint_widget.main_image.update()
+                        self.mouseOri -= (self.mouseOri - mousePos)
+                
+            
         
     def mouseReleaseEvent(self, event)->None:
         super().mouseReleaseEvent(event)
@@ -336,7 +405,7 @@ class Detection_Label_Main_Window(QMainWindow):
             mouseX, mouseY = mousePos.x(), mousePos.y()
             for index, rect in enumerate(self.paint_widget.main_image.rectangles):
                 if rect.checkInBox(mouseX, mouseY):
-                    if self.boxNum != index or self.box_move:
+                    if self.boxNum != index or self.box_move or self.extend_box:
                         self.onBox = True
                         self.boxNum = index
                     else:
@@ -367,11 +436,9 @@ class Detection_Label_Main_Window(QMainWindow):
 
             # Add Rectangles
             self.paint_widget.main_image.rectangles.append(rectInfo(start_points=self.startPoint, end_points=self.endPoint, label=self.label, ptsSize=6))
+            self.main_ui.lst_box_output.addItem(CLASS_NAME[self.label])
             self.paint_widget.main_image.onBox = self.onBox =  True
             self.paint_widget.main_image.index = self.boxNum = len(self.paint_widget.main_image.rectangles) - 1
-
-            print(f"Main Rectangles : {self.paint_widget.main_image.rectangles}")
-            print(f"Main Labels     : {self.paint_widget.main_image.labels}")
 
             # Update Last Drawing
             self.paint_widget.main_image.update()
@@ -379,7 +446,10 @@ class Detection_Label_Main_Window(QMainWindow):
         
         if self.box_move:
             self.box_move = False
-            self.paint_widget.main_image.rectangles[self.boxNum].mainRect.qBoxpts
+            # self.paint_widget.main_image.rectangles[self.boxNum].mainRect.qBoxpts
+        
+        if self.extend_box:
+            self.extend_box = False
         
 
             
@@ -395,6 +465,7 @@ class Detection_Label_Main_Window(QMainWindow):
         r"""
         Timer Event Handler
         """
+
         #Initialize Paint Rectangle
         self.paint_widget.main_image.rectangles = []
         self.paint_widget.main_image.labels     = []
@@ -411,6 +482,11 @@ class Detection_Label_Main_Window(QMainWindow):
             QMessageBox.critical(self, "Splitting Error!", "Please click split button before the run!")
             self.timer.stop()
             return
+        
+        if self.step:
+            # Save Image Update Label
+            self.saveImage()
+            self.updateJson()
         
         # Run Image to QTImage
         img = self.toQImage(self.frame)
@@ -431,11 +507,51 @@ class Detection_Label_Main_Window(QMainWindow):
         self.main_ui.seqBar_main_video.setFormat(f"{self.step} / {self.num_frames}")
         self.step = self.step +1
 
+        
     
     #=====================================================================================================================
     #                                            Other Controller
     #=====================================================================================================================
+    def saveImage(self) -> None:
+        self.saveImgName += f"_{self.step - 1}.png"
+        cv2.imwrite(os.path.join(self.save_folder, "out_dir", "images", self.saveImgName), self.frame)
+
+    def initJson(self) -> None:
+        if not os.path.exists(os.path.join(self.save_folder, "out_dir")):
+            os.mkdir(os.path.join(self.save_folder, "out_dir"))
+            os.mkdir(os.path.join(self.save_folder, "out_dir", "images"))
+            os.mkdir(os.path.join(self.save_folder, "out_dir", "annotations"))
+
+            self.json_data = {'info': 'DuckFarm dataset',
+                'images': [],
+                'licenses':'...',
+                'categories' : [{'id': 1, 'name': 'duck'}, {'id': 2, 'name': 'slapped'}, {'id': 3, 'name': 'dead'}],
+                'annotations': []
+            }
+            self.makeJson()
+
+        else:
+            with open(os.path.join(self.save_folder, "out_dir", "annotations", "labels.json"), 'r') as json_file:
+                self.json_data = json.load(json_file)
+
+
+    def makeJson(self) -> None:
+        with open(os.path.join(self.save_folder, "out_dir", "annotations", "labels.json"), 'w') as json_file:
+            json.dump(self.json_data, json_file)
     
+    def updateJson(self) -> None:
+        self.json_data["images"].append({'id': len(self.json_data["images"]), 'width': self.width_video, 'height': self.height_video, 'file_name': self.saveImgName})
+        for rects in self.paint_widget.main_image.rectangles:
+            rect = rects.mainRect
+            self.json_data["annotations"].append({
+                "id": len(self.json_data["annotations"]),
+                "image_id": len(self.json_data["images"])  -1,
+                'category_id': rect.label,
+                'bbox': [rect.x1 * self.resizeFactor, (rect.y1 + self.paint_widget.Factor.y())* self.resizeFactor,
+                         rect.x2 * self.resizeFactor, (rect.y2 + self.paint_widget.Factor.y()) * self.resizeFactor],
+                'area': (rect.x2 - rect.x1) * (rect.y2 - rect.y1) * self.resizeFactor * self.resizeFactor,
+                'iscrowd': 0
+            })
 
     def toQImage(self, img, copy=False):
         r"""
