@@ -1,5 +1,11 @@
 # __Detection_Label_Video__
 
+For my lab, auto bounding box labeling program. 
+
+Using Detectron 2
+
+![Main](./imgs/Example_ALL.png)
+
 ## __Installation__
 
 ### 1. Install Anaconda
@@ -78,3 +84,13 @@ python main.py
 ```
 
 ## __How to Use It__
+
+### Shortcut Key
+| Shortcut key |  Name  |  Do        |
+|   ---        |   ---  |    ---     |
+| Ctrl + Mouse Left Button     | Draw   | Drawing the box |
+| Alt + F4     | Quit   | App's Exit |
+| Ctrl + Enter | Done   | App's Done |
+| s     | Start / Pause   | If video pause, run or run, pause. |
+| Ctrl + c     | copy  | Copy the on Box |
+| Ctrl + v     | paste  | Paste the on Box |
