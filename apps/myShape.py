@@ -2,8 +2,8 @@ import numpy as np
 
 from PyQt5.QtCore import QPoint
 from PyQt5.QtGui import QColor, QCursor
-from PyQt5.QtCore import  QPoint, QRect, QRectF,  Qt
-from PyQt5.QtWidgets import  QApplication,  QMessageBox, QVBoxLayout
+from PyQt5.QtCore import  QPoint, QRectF,  Qt
+from PyQt5.QtWidgets import  QApplication
 
 CLASS_NAMES = {0: "BackGround",
               1: "Duck",

@@ -4,4 +4,3 @@ out_dir
 *.ipynb
 weights/**
 !weights/README.md
-pycocotools

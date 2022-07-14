@@ -1,7 +1,6 @@
 
-from PyQt5 import uic
 from PyQt5.QtGui import QColor, QPainter, QImage, QPixmap, QPen, QBrush
-from PyQt5.QtCore import QBasicTimer, QObject, QPoint, QRect, QRectF,  pyqtSlot, Qt
+from PyQt5.QtCore import  QPoint, QRect, QRectF, Qt
 from PyQt5.QtWidgets import  QLabel, QWidget
 
 from ui.Main_ui import *
