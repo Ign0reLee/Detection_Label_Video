@@ -238,8 +238,8 @@ class Detection_Label_Main_Window(QMainWindow):
         self.num_frames   = int(self.video.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # For Save
-        names             = self.video_path.split(SPLITER)
-        self.saveImgName  = f"{names[-2].split('_')[-1]}_{names[-1].replace('.mp4', '')}" 
+        self.names             = self.video_path.split(SPLITER)
+        self.saveImgName  = f"{self.names[-2].split('_')[-1]}_{self.names[-1].replace('.mp4', '')}" 
 
         # For Sequence Bar Setting
         self.main_ui.seqBar_main_video.setMaximum(self.num_frames)
@@ -549,6 +549,8 @@ class Detection_Label_Main_Window(QMainWindow):
     def saveImage(self) -> None:
         self.saveImgName += f"_{self.step - 1}.png"
         cv2.imwrite(os.path.join(self.save_folder, "out_dir", "images", self.saveImgName), self.frame)
+        self.saveImgName.replace(f"_{self.step - 1}.png", "")
+        
 
     def initJson(self) -> None:
         if not os.path.exists(os.path.join(self.save_folder, "out_dir")):
