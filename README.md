@@ -4,7 +4,7 @@
 
 ### 1. Install Anaconda
 
-[__Aanaconda__](!https://www.anaconda.com/products/distribution)
+[__Aanaconda__](https://www.anaconda.com/products/distribution)
 
 <br/>
 
@@ -15,7 +15,7 @@ And also must be install right CUDA
 
 __Link__
 
-[__PyTorch doc__](!https://pytorch.org/get-started/previous-versions)
+[__PyTorch doc__](https://pytorch.org/get-started/previous-versions)
 
 <br/>
 
@@ -26,16 +26,13 @@ we provide pycocotools for python in this code, but if it is not available, plea
 
 __pycocotools__
 
-[__From source__](!https://github.com/cocodataset/cocoapi)
-|
-[__Anaconda__](!https://anaconda.org/conda-forge/pycocotools)
-|
-[__Windows with Conda__](!https://mkwilson.tistory.com/210)
+[__From source__](https://github.com/cocodataset/cocoapi) | 
+[__Anaconda__](https://anaconda.org/conda-forge/pycocotools) | 
+[__Windows with Conda__](https://mkwilson.tistory.com/210)
 
 __Detectron2__
 
-[__Windows__](!https://medium.com/@yogeshkumarpilli/how-to-install-detectron2-on-windows-10-or-11-2021-aug-with-the-latest-build-v0-5-c7333909676f)
-|
+[__Windows__](https://medium.com/@yogeshkumarpilli/how-to-install-detectron2-on-windows-10-or-11-2021-aug-with-the-latest-build-v0-5-c7333909676f) | 
 [__Linux__](https://detectron2.readthedocs.io/en/latest/tutorials/install.html)
 
 <br/>
@@ -55,7 +52,25 @@ conda install -y pyqt jupyter tqdm opencv
 
 ### 5. Downolad weight
 
-[Weights](!https://drive.google.com/file/d/1NbJGUSSih5AbkO9vQYGhsuOVko5A34zB/view?usp=sharing)
+
+__Download and Unzip__
+
+```
+├── [Detection_Label_Video](./)
+│    ├── [weights](./weights)
+│       ├── [metrics.json](./weights/metrics.json)
+│       ├── [coco_instances_results.json](./weights/coco_instances_results.json)
+│       ├── [model_final.pth](./weights/model_final.pth)
+│       ├── [model_0002999.pth](./weights/model_0002999.pth)
+│       ├── [instances_predictions.pth](./weights/instances_predictions.pth)
+│       ├── [last_checkpoint](./weights/last_checkpoint)
+│       ├── [events.out.tfevents.1654235188.cvmilab-server.476813.0](./weights/events.out.tfevents.1654235188.cvmilab-server.476813.0])
+│       └── [README.md](./weights/README.md)
+```
+
+[Weights Downloads](https://drive.google.com/file/d/1NbJGUSSih5AbkO9vQYGhsuOVko5A34zB/view?usp=sharing)
+
+
 
 ## __Run Code__
 ``` cmd
